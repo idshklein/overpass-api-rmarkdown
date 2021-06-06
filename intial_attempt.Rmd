@@ -1,0 +1,74 @@
+---
+title: "overpass in chunk"
+author: "Ido Klein"
+date: "27/12/2020"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, echo=TRUE,include=FALSE}
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE
+)
+library(osmdata)
+library(mapview)
+library(leaflet)
+library(ggspatial)
+library(htmlwidgets)
+```
+
+```{r include=FALSE}
+overpass_query_to_map <- function(query){
+  code <- paste(query, collapse = "")
+  res <- osmdata:::overpass_query(code,quiet = TRUE)
+  xml2::write_xml(xml2::read_xml(res), tmp <- tempfile(fileext = "xml"))
+  sf_res <- osmdata_sf(doc = tmp)
+  sf_res_1 <-  purrr::map(sf_res[stringr::str_starts(names(sf_res),"osm")],function(x){
+    if(is.null(x) || nrow(x)== 0){
+      return(NULL)
+    }else {
+      return(x)
+    }
+  })
+  map <- mapview(sf_res_1$osm_points) + mapview(sf_res_1$osm_lines) + mapview(sf_res_1$osm_polygons) + mapview(sf_res_1$osm_multilines) + mapview(sf_res_1$osm_multipolygons)
+  map@map
+  
+  # ggplot2::ggplot(sf_res_1$osm_points) + 
+  # ggspatial::annotation_map_tile()+
+  # ggplot2::geom_sf()
+}
+# txt1 <- '[out:xml][timeout:25];(node["amenity"="fuel"](area:3601246731);way["amenity"="fuel"](area:3601246731);relation["amenity"="fuel"](area:3601246731););out body;>;out skel qt;'
+# overpass_query_to_map(txt1)
+```
+
+```{r include=FALSE}
+knitr::knit_engines$set(overpassApi = function(options) {
+  out <- list("")
+  if (options$eval) {
+    code <- overpass_query_to_map(options$code)
+    saveWidget(code, file=path <- tempfile(fileext = ".html"))
+    OUT <- list(knitr::include_url(path))
+  }
+  if (options$echo)
+    OUT <- c(OUT, options$code)
+  knitr::engine_output(
+    options, 
+    out = OUT
+  )
+})
+```
+
+## gas stations in Rehovot
+
+
+```{overpassApi}
+[out:xml][timeout:25];(node["amenity"="fuel"](area:3601246791);way["amenity"="fuel"](area:3601246791);relation["amenity"="fuel"](area:3601246791););out body;>;out skel qt;
+```
+
+## gas stations in Nes Ziona
+
+```{overpassApi}
+[out:xml][timeout:25];(node["amenity"="fuel"](area:3601246731);way["amenity"="fuel"](area:3601246731);relation["amenity"="fuel"](area:3601246731););out body;>;out skel qt;
+```
