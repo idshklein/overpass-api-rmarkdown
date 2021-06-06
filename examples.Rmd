@@ -1,0 +1,73 @@
+---
+title: "הכוח בכפות ידיכם - שאילתות אוברפס על אופנ-סטריט-מאפ"
+author: "עדו קליין"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, echo=TRUE,include=FALSE}
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE
+)
+library(osmdata)
+library(mapview)
+library(leaflet)
+library(ggspatial)
+library(htmlwidgets)
+```
+
+```{r include=FALSE}
+overpass_query_to_map <- function(query){
+  code <- paste(query, collapse = "")
+  res <- osmdata:::overpass_query(code,quiet = TRUE)
+  xml2::write_xml(xml2::read_xml(res), tmp <- tempfile(fileext = "xml"))
+  sf_res <- osmdata_sf(doc = tmp)
+  sf_res_1 <-  purrr::map(sf_res[stringr::str_starts(names(sf_res),"osm")],function(x){
+    if(is.null(x) || nrow(x)== 0){
+      return(NULL)
+    }else {
+      return(x)
+    }
+  })
+  map <- mapview(sf_res_1$osm_points) + mapview(sf_res_1$osm_lines) + mapview(sf_res_1$osm_polygons) + mapview(sf_res_1$osm_multilines) + mapview(sf_res_1$osm_multipolygons)
+  map@map
+}
+
+```
+
+```{r include=FALSE}
+knitr::knit_engines$set(overpassApi = function(options) {
+  out <- list("")
+  if (options$eval) {
+    code <- overpass_query_to_map(options$code)
+    saveWidget(code, file=path <- tempfile(fileext = ".html"))
+    OUT <- list(knitr::include_url(path))
+  }
+  if (options$echo)
+    OUT <- c(OUT, options$code)
+  knitr::engine_output(
+    options, 
+    out = OUT
+  )
+})
+```
+
+## מחצבות בישראל {style="direction:rtl;"}
+
+```{overpassApi}
+[out:xml][timeout:25];(relation["landuse"="quarry"](area:3606195356););out body;>;out skel qt;
+```
+
+## מעברי חצייה מרומזרים בתל אביב {style="direction:rtl;"}
+
+```{overpassApi}
+[out:xml][timeout:25];(node["crossing"="traffic_signals"](area:3601382494););out body;>;out skel qt;
+```
+
+## שבילי אופניים ברחובות {style="direction:rtl;"}
+
+```{overpassApi}
+[out:xml][timeout:25];(way["highway"="cycleway"](area:3601246791););out body;>;out skel qt;
+```
